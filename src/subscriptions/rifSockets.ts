@@ -5,9 +5,9 @@ import {
 } from '@rsksmart/rif-wallet-services'
 import DeviceInfo from 'react-native-device-info'
 import Config from 'react-native-config'
+import { BigNumber, utils } from 'ethers'
 
 import { ChainID } from 'lib/eoaWallet'
-
 import { resetSocketState } from 'store/shared/actions/resetSocketState'
 import { AppDispatch } from 'store/index'
 import { abiEnhancer } from 'core/setup'
@@ -42,7 +42,6 @@ const onSocketInit = (
   payload: InitAction['payload'],
   cb: (action: Action) => void,
 ) => {
-  console.log('🟢 [rifSockets] Socket INIT event received ✅')
   cb({ type: 'init', payload })
 }
 
@@ -73,22 +72,20 @@ export const rifSockets = ({
   )
 
   const connectSocket = () => {
-    console.log('🔌 [rifSockets] Attempting socket connection...')
-
     if (rifWalletServicesSocket.isConnected()) {
-      console.log(
-        '🛑 [rifSockets] Socket already connected. Disconnecting first...',
-      )
       rifWalletServicesSocket.disconnect()
       dispatch(resetSocketState())
     }
+
+    console.log('♻️ [rifSockets] Cleaned up socketsEvents listeners.')
+    socketsEvents.removeAllListeners()
 
     const defaultTokens = getDefaultTokens(chainId)
     const defaultTokensWithBalance = defaultTokens.map(t => {
       const tokenBalance = balances[t.contractAddress]
       return {
         ...t,
-        logo: '', // remove warning
+        logo: '',
         balance: tokenBalance?.balance ?? t.balance,
         usdBalance: tokenBalance?.usdBalance ?? t.usdBalance,
       } as ITokenWithBalance
@@ -101,31 +98,80 @@ export const rifSockets = ({
     console.log('🧹 [rifSockets] Removed all existing socket listeners.')
 
     rifWalletServicesSocket.on('init', async payload => {
-      console.log('📦 [rifSockets] Received "init" payload:', payload)
+      console.log(
+        '📦 [rifSockets] Received "init" payload:',
+        JSON.stringify(payload, null, 2),
+      )
+
+      const tokens = payload.tokens || []
+
+      const logTokenBalance = (symbol: string) => {
+        const token = tokens.find(
+          t => t.symbol?.toLowerCase() === symbol.toLowerCase(),
+        )
+
+        if (token) {
+          const balanceRaw = token.balance
+          const decimals = token.decimals ?? 18
+          let formattedBalance = '0'
+
+          try {
+            formattedBalance = utils.formatUnits(
+              BigNumber.from(balanceRaw),
+              decimals,
+            )
+          } catch (err) {
+            console.warn(
+              `⚠️ [rifSockets] Error al formatear balance de ${symbol}:`,
+              err,
+            )
+          }
+
+          console.log(`🔎 [rifSockets] Token ${symbol}:`)
+          console.log(`   🔗 Address: ${token.contractAddress}`)
+          console.log(`   💰 Balance (raw): ${balanceRaw}`)
+          console.log(`   🏷️  Decimals: ${decimals}`)
+          console.log(`   ✅ Balance (formatted): ${formattedBalance}`)
+        } else {
+          console.warn(
+            `❌ [rifSockets] Token ${symbol} not found in init.tokens`,
+          )
+        }
+      }
+
+      logTokenBalance('tRIF')
+      logTokenBalance('RBTC')
+
       onSocketInit(payload, onChange)
+      console.log('🟢 [rifSockets] Socket INIT event received ✅')
     })
 
-    rifWalletServicesSocket.on('change', payload => {
-      console.log('📡 [rifSockets] Received "change" event:', payload)
-      onChange(payload)
-    })
+    rifWalletServicesSocket.on('change', onChange)
 
     try {
       const blockNumber = cache.get('blockNumber') || '0'
-      const headers = {
+      console.log('🔌 [rifSockets] Attempting socket connection...')
+      console.log('🧠 [rifSockets] Connecting with headers:', {
         'User-Agent': DeviceInfo.getUserAgentSync(),
         'x-trace-id': Config.TRACE_ID,
-      }
-      console.log('🧠 [rifSockets] Connecting with headers:', headers)
+      })
       console.log('📦 [rifSockets] Starting from block:', blockNumber)
 
-      rifWalletServicesSocket.connect(address, chainId, headers, blockNumber)
+      rifWalletServicesSocket.connect(
+        address,
+        chainId,
+        {
+          'User-Agent': DeviceInfo.getUserAgentSync(),
+          'x-trace-id': Config.TRACE_ID,
+        },
+        blockNumber,
+      )
 
       console.log('✅ [rifSockets] Socket connection initiated.')
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Error connecting to socket'
-      console.error('❌ [rifSockets] Socket connection failed:', msg)
+      console.error('❌ [rifSockets] Connection error:', msg)
       setGlobalError(msg)
     }
   }
@@ -134,9 +180,6 @@ export const rifSockets = ({
     console.log('🔌 [rifSockets] Disconnecting socket...')
     rifWalletServicesSocket.disconnect()
   }
-
-  socketsEvents.removeAllListeners()
-  console.log('♻️ [rifSockets] Cleaned up socketsEvents listeners.')
 
   socketsEvents.on(SocketsEvents.CONNECT, connectSocket)
   socketsEvents.on(SocketsEvents.DISCONNECT, disconnectSocket)
