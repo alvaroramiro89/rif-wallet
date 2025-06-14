@@ -18,7 +18,8 @@
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix --max-warnings=0",
     "postinstall": "rn-nodeify --install buffer,events,stream,crypto --hack --yarn",
     "clean:android": "cd android && ./gradlew clean && ./gradlew cleanBuildCache && cd ..",
-    "clean:ios": "cd ios && xcodebuild clean && rm -rf ~/Library/Caches/CocoaPods && rm -rf Pods && rm -rf ~/Library/Developer/Xcode/DerivedData/* && pod cache clean --all && pod deintegrate && pod setup && pod install && cd .."
+    "clean:ios": "cd ios && xcodebuild clean && rm -rf ~/Library/Caches/CocoaPods && rm -rf Pods && rm -rf ~/Library/Developer/Xcode/DerivedData/* && pod cache clean --all && pod deintegrate && pod setup && pod install && cd ..",
+    "clean": "react-native-clean-project"
   },
   "dependencies": {
     "@ethersproject/shims": "^5.7.0",
@@ -134,6 +135,8 @@
     "jest": "^29.6.3",
     "metro-react-native-babel-preset": "^0.73.10",
     "prettier": "2.8.8",
+    "react-native-clean-project": "^4.0.3",
+    "react-native-dotenv": "^3.4.11",
     "react-native-flipper": "^0.212.0",
     "react-native-mmkv-flipper-plugin": "^1.0.0",
     "react-test-renderer": "18.2.0",

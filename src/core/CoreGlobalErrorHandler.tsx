@@ -1,9 +1,12 @@
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import FlashMessage from 'react-native-flash-message'
+import { RIF_WALLET_SERVICE_PUBLIC_KEY } from '@env'
 
 import { GlobalErrorHandler } from '../components/GlobalErrorHandler'
 import ErrorBoundary from '../components/ErrorBoundary/ErrorBoundary'
 import { CoreWithStore } from './CoreWithStore'
+
+console.log('🔐 RIF_WALLET_SERVICE_PUBLIC_KEY:', RIF_WALLET_SERVICE_PUBLIC_KEY)
 
 export const CoreGlobalErrorHandler = ({ CoreComponent = CoreWithStore }) => {
   return (
